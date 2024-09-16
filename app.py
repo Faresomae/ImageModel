@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify
 import numpy as np
-import tensorflow as tf
 from PIL import Image
 import io
+import tflite_runtime.interpreter as tflite
 
 app = Flask(__name__)
 
-# Load the quantized model
-interpreter = tf.lite.Interpreter(model_path="model_quantized.tflite")
+# Load the quantized model using tflite_runtime
+interpreter = tflite.Interpreter(model_path="model_quantized.tflite")
 interpreter.allocate_tensors()
 
 # Get model input and output details
