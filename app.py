@@ -1,38 +1,22 @@
 from flask import Flask, request, jsonify
-import tensorflow as tf
-import numpy as np
+# import tensorflow as tf
+# import numpy as np
 from PIL import Image
 import io
-import h5py
+import pickle
+import numpy as np
 
 app = Flask(__name__)
 
-# Load the TFLite model (replace 'model_quantized.tflite' with the actual path to your model)
-try:
-    interpreter = tflite.Interpreter(model_path='model_quantized.tflite')
-    interpreter.allocate_tensors()
-except Exception as e:
-    print(f"Failed to load TFLite model: {e}")
-    raise
-
-# Get input and output tensors
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
+# Load the model (replace 'path_to_your_model.h5' with the actual path to your model)
+# model = tf.keras.models.load_model('imagemodel.h5')
+with open('my_model.h5', 'rb') as file:
+    model = pickle.load(file)
 # Prediction function
-def predict_from_model(img_array):
-    try:
-        # Set the input tensor
-        interpreter.set_tensor(input_details[0]['index'], img_array)
-        interpreter.invoke()
-
-        # Get the output tensor
-        predictions = interpreter.get_tensor(output_details[0]['index'])
-        predicted_class = np.argmax(predictions, axis=1)
-        return int(predicted_class[0])
-    except Exception as e:
-        print(f"Prediction error: {e}")
-        raise
+def predict_from_model(model, img_array):
+    predictions = model.predict(img_array)
+    predicted_class = np.argmax(predictions, axis=1)
+    return int(predicted_class[0])
 
 # Prediction endpoint
 @app.route('/predict', methods=['POST'])
@@ -41,7 +25,7 @@ def predict():
         return jsonify({"message": "No file part in the request"}), 400
 
     file = request.files['file']
-
+    
     if file.filename == '':
         return jsonify({"message": "No selected file"}), 400
 
@@ -52,19 +36,15 @@ def predict():
         img_array = np.expand_dims(img_array, axis=0)
         img_array = img_array / 255.0  # Normalize image array
 
-        # Adjust the shape of the input array if needed
-        img_array = np.array(img_array, dtype=np.float32)
-
-        prediction = predict_from_model(img_array)
-
+        prediction = predict_from_model(model, img_array)
+        
         response = {
             "predicted_class": prediction,  # Adjust based on your model's output
         }
-
+        
         return jsonify(response), 200
     except Exception as e:
-        print(f"Error in prediction endpoint: {e}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
+if __name__ == 'main':
     app.run(debug=True)
